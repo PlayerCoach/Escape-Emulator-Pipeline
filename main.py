@@ -70,6 +70,41 @@ def load_project_file(project_file_path:str, _MAWin: WindowSpecification) -> Non
     except Exception as e:
         print(f"Error loading project file: {e}")
 
+def set_breakpoint(_MAWin: WindowSpecification, breakpoint_addr:hex=0x000001FC) -> None:
+    """
+    Set a breakpoint in the Escape application.
+    By default, it sets a breakpoint at address 0x000001FC, because this is the last possible address according to .ecf file.
+    This function assumes that the Escape application is already running and the Microprogrammed Architecture window is open.
+    It also assumes that the user has already loaded a project file.
+    Args:
+        _MAWin (WindowSpecification): The Microprogrammed Architecture window.
+        breakpoint_addr (hex): The address to set the breakpoint at. Default is 0x000001FC.
+    """
+    try:
+        _MAWin.menu_select("View->Breakpoints...")
+        breakWin = Desktop(backend="win32").window(title_re=".*[Bb]reakpoints.*")
+        # Select Organizational registers element
+        org_reg = breakWin.child_window(title="Organisational Registers", class_name="TGroupBox")
+        #select first TPanel of the group and list its children
+        org_reg_panels = org_reg.children(class_name="TPanel")
+        org_reg_panel = org_reg_panels[0] # TPanel 0 is set to PC by default, found by trial and error
+
+
+        org_reg_panel.children(class_name="TEdit")[0].set_edit_text(f"0x{breakpoint_addr:08X}")  # Set the breakpoint address
+        org_reg_panel.children(class_name="TCheckBox")[0].click()  # Click the "Set" button
+        # Save with ctrl+S
+        breakWin.type_keys('^s')  # Ctrl + S to save
+        # Close the breakpoints window
+        breakWin.close()
+
+    except ElementNotFoundError:
+        print("Breakpoints button not found (exception).")
+    except Exception as e:
+        print(f"Error opening breakpoints window: {e}")
+        return
+
+   
+  
 Timings.after_clickinput_wait = 0
 Timings.after_setfocus_wait = 0
 
@@ -81,6 +116,7 @@ mainWin.child_window(title="Microprogrammed Architecture", class_name="TButton")
 MAWindow = Desktop(backend="win32").window(title_re=".*Microprogrammed Architecture.*")
 
 load_project_file(r"..\zak_simple\soi.mpr", MAWindow)
+set_breakpoint(MAWindow)
     
 
 # # win.print_control_identifiers(depth=3)
