@@ -40,7 +40,11 @@ try:
             file_dlg = app.window(title_re=".*Load Microcode Project.*")  # Adjust title if needed
             file_dlg["Edit"].set_edit_text(r"..\zak_simple\soi.mpr")
             file_dlg["Open"].click()
-            MAWindow.print_control_identifiers(depth=3)
+            # save result to a file 
+            time_field = MAWindow.child_window(class_name="TEditInteger")
+            print(time_field.window_text())
+            time_field.set_edit_text("2137")  # or whatever input format is expected
+            print(time_field.window_text())
             time_end = time.time()
             print(f"Microprogrammed Architecture loaded in {time_end - time_start:.2f} seconds.")
 
