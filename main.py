@@ -6,6 +6,8 @@ from pywinauto import Desktop
 from pywinauto.timings import Timings
 from pywinauto.application import WindowSpecification
 from fileHandler import copy_dat_file, clean_dat_file, compare_dat_to_expected
+from functools import wraps
+from utils import time_function
 
 def init_escape(escape_path:str) -> Application:
     """
@@ -54,6 +56,7 @@ def load_config_file(config_file_path:str, _mainWin: WindowSpecification, _app: 
     except Exception as e:
         print(f"Error loading configuration file: {e}")
 
+@time_function
 def load_project_file(project_file_path:str, _MAWin: WindowSpecification) -> None:
     """
     Load a project file into the Escape application from .mpr file.
@@ -146,6 +149,7 @@ def close_escape_popups() -> None:
     except Exception as e:
         print(f"Error retrieving windows: {e}")
 
+@time_function
 def run_simulation(_MAWin: WindowSpecification, index:int) -> None:
     """
     Run the simulation in the Escape application.
@@ -199,9 +203,9 @@ load_project_file(r"..\zak_simple\soi.mpr", MAWindow)
 set_breakpoint(MAWindow)
 set_cycles_options(MAWindow)
 
-run_simulation(MAWindow, 0)
+# Run the simulation
 
-# for i in range(1, 6):
-#     run_simulation(MAWindow, i)
-#     load_project_file(r"..\zak_simple\soi.mpr", MAWindow)
+for i in range(1, 6):
+    run_simulation(MAWindow, i)
+    load_project_file(r"..\zak_simple\soi.mpr", MAWindow)
     
