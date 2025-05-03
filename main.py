@@ -1,10 +1,11 @@
 import os
+import time
 from pywinauto.application import Application
 from pywinauto.findwindows import ElementNotFoundError
 from pywinauto import Desktop
 from pywinauto.timings import Timings
 from pywinauto.application import WindowSpecification
-import time
+from fileHandler import copy_dat_file, clean_dat_file, compare_dat_to_expected
 
 def init_escape(escape_path:str) -> Application:
     """
@@ -103,8 +104,87 @@ def set_breakpoint(_MAWin: WindowSpecification, breakpoint_addr:hex=0x000001FC) 
         print(f"Error opening breakpoints window: {e}")
         return
 
-   
+def set_cycles_options(_MAWin: WindowSpecification, cycles:int=100_000) -> None:
+    """
+    Set the number of cycles in the Escape application.
+    By default, it sets the number of cycles to 100 000.
+    This function assumes that the Escape application is already running and the Microprogrammed Architecture window is open.
+    It also assumes that the user has already loaded a project file.
+    Args:
+        _MAWin (WindowSpecification): The Microprogrammed Architecture window.
+        cycles (int): The number of cycles to set. Default is 1000.
+    """
+    try:
+        _MAWin.child_window(class_name="TSpinEdit").set_edit_text(str(cycles))  # Set the number of cycles
+        _MAWin.child_window(class_name="TCheckBox").click()  # Click the "Multiple Cycles" checkbox
+    except ElementNotFoundError:
+        print("Cycles options button not found (exception).")
   
+def close_escape_popups() -> None:
+    """
+    Close any popups that may appear in the Escape application.
+    This function assumes that the Escape application is already running.
+    """
+    try:
+        # Retrieve all open windows
+        windows = Desktop(backend="win32").windows()
+
+        for win in windows:
+            try:
+                # Check if the window title contains "note"
+                if "note" in win.window_text().lower():
+                    child_windows = win.children()
+                    for child in child_windows:
+                        if child.window_text() == "Breakpoint condition met":
+                            win.close()
+                            break
+
+            except Exception as e:
+                print(f"Error while handling window: {e}")
+                continue  # Proceed to the next window if an error occurs
+
+    except Exception as e:
+        print(f"Error retrieving windows: {e}")
+
+def run_simulation(_MAWin: WindowSpecification, index:int) -> None:
+    """
+    Run the simulation in the Escape application.
+    This function assumes that the Escape application is already running and the Microprogrammed Architecture window is open.
+    It also assumes that the user has already loaded a project file and set the number of cycles.
+    Args:
+        _MAWin (WindowSpecification): The Microprogrammed Architecture window.
+    """
+    try:
+        _MAWin.child_window(title="Reset", class_name="TButton").click()  # Click the "Run" button
+        _MAWin.child_window(title="&Clock").click()  # Click the "Run" button
+        # Wait for the simulation to finish, check if time field is set to 100_000
+        time_field = _MAWin.child_window(class_name="TEditInteger")
+        while True:
+            time_field = _MAWin.child_window(class_name="TEditInteger")
+            if int(time_field.window_text()) <= 100_000:
+                break
+            else:
+                print("Waiting for simulation to finish...")
+                close_escape_popups()
+                time.sleep(0.1)
+        #Type 
+        close_escape_popups()
+        _MAWin.type_keys('^s')  # Ctrl + S to save
+
+        copy_dat_file(r"..\zak_simple\soi.dat", r"..\results\\" + f"result{index}.dat")
+        # Compare the .dat file with the expected .dat file
+        if compare_dat_to_expected(r"..\zak_simple\soi.dat", r"..\zak_simple\result.dat"):
+            print("Simulation successful, .dat file matches expected result.")
+        else:
+            print("Simulation failed, .dat file does not match expected result.")
+
+        # Clean the .dat file
+        clean_dat_file(r"..\zak_simple\soi.dat", r"..\zak_simple\clean.dat")
+
+
+    except ElementNotFoundError:
+        print("Run button not found (exception).")
+        return
 Timings.after_clickinput_wait = 0
 Timings.after_setfocus_wait = 0
 
@@ -117,9 +197,11 @@ MAWindow = Desktop(backend="win32").window(title_re=".*Microprogrammed Architect
 
 load_project_file(r"..\zak_simple\soi.mpr", MAWindow)
 set_breakpoint(MAWindow)
-    
+set_cycles_options(MAWindow)
 
-# # win.print_control_identifiers(depth=3)
-#    time_field = MAWindow.child_window(class_name="TEditInteger")
-#     print(time_field.window_text())
-#     time_field.set_edit_text("2137")  # or whatever input format is expected
+run_simulation(MAWindow, 0)
+
+# for i in range(1, 6):
+#     run_simulation(MAWindow, i)
+#     load_project_file(r"..\zak_simple\soi.mpr", MAWindow)
+    
